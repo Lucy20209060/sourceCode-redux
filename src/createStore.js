@@ -29,27 +29,34 @@ import isPlainObject from './utils/isPlainObject'
  * and subscribe to changes.
  */
 export default function createStore(reducer, preloadedState, enhancer) {
+  // 如果第二个参数为方法 且第三个参数是空 则将两个参数交换
   if (typeof preloadedState === 'function' && typeof enhancer === 'undefined') {
     enhancer = preloadedState
     preloadedState = undefined
   }
 
+  // enhancer 必须为 function 类型
   if (typeof enhancer !== 'undefined') {
     if (typeof enhancer !== 'function') {
       throw new Error('Expected the enhancer to be a function.')
     }
-
+    // 将 enhancer 包装一次 createStore 方法 再调用无 enhancer 的 createStore 方法
     return enhancer(createStore)(reducer, preloadedState)
   }
-
+  // reducer 必须为 function 类型
   if (typeof reducer !== 'function') {
     throw new Error('Expected the reducer to be a function.')
   }
 
+  // 当前的reducer函数
   let currentReducer = reducer
+  // 当前state树
   let currentState = preloadedState
+  // 监听函数列表
   let currentListeners = []
+  // 当前列表的一个引用
   let nextListeners = currentListeners
+  // 是否正在dispatch
   let isDispatching = false
 
   function ensureCanMutateNextListeners() {
@@ -63,6 +70,8 @@ export default function createStore(reducer, preloadedState, enhancer) {
    *
    * @returns {any} The current state tree of your application.
    */
+
+  // 返回当前的 state 树
   function getState() {
     if (isDispatching) {
       throw new Error(
@@ -98,6 +107,8 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @param {Function} listener A callback to be invoked on every dispatch.
    * @returns {Function} A function to remove this change listener.
    */
+
+  // 添加注册一个监听函数 返回一个可以取消监听的方法
   function subscribe(listener) {
     if (typeof listener !== 'function') {
       throw new Error('Expected the listener to be a function.')
@@ -207,6 +218,8 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @param {Function} nextReducer The reducer for the store to use instead.
    * @returns {void}
    */
+
+  // 替换当前的reducer
   function replaceReducer(nextReducer) {
     if (typeof nextReducer !== 'function') {
       throw new Error('Expected the nextReducer to be a function.')
@@ -258,6 +271,8 @@ export default function createStore(reducer, preloadedState, enhancer) {
   // When a store is created, an "INIT" action is dispatched so that every
   // reducer returns their initial state. This effectively populates
   // the initial state tree.
+
+  //当创建一个 store 时，将发送一个“init”动作，以便每个 reducer 返回它们的初始状态。这有效地填充了初始状态树。
   dispatch({ type: ActionTypes.INIT })
 
   return {
@@ -268,3 +283,24 @@ export default function createStore(reducer, preloadedState, enhancer) {
     [$$observable]: observable
   }
 }
+
+/**
+ * createState 接受三个参数
+ *  reducer 这个参数是一个函数 返回下一个state树
+ *  preloadedState 初始化的state
+ *  enhancer 第三个参数是一个store增强器 函数类型 只能使用 applyMiddleware 方法来生成
+ * 这个方法最终生一个对象 对象中包含了一个重要的成员变量 即state树 暴露了几个成员方法
+ * 
+ * dispatch redux中唯一触发state树修改的方法 分发一个action 然后在该action对应的处理函数中返回一个新的state树
+ * subscribe 给store的状态树添加监听函数 一旦dispatch被调用 所有的监听函数会被执行
+ * getState 返回当前的状态树
+ * replaceReducer 替换当前的store中的reducer的方法
+ * [$$observable]: observable
+ * 
+ */
+
+ 上述代码 可以看出createStore方法最终return了几个方法 通过闭包的原理 内部的各个变量也就被持久化的存储了 
+ 
+ 而通过暴露的getState,dispatch等函数 我们可以获取或者改变其内部的state。
+
+ 
