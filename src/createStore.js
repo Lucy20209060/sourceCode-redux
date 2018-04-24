@@ -299,8 +299,128 @@ export default function createStore(reducer, preloadedState, enhancer) {
  * 
  */
 
- 上述代码 可以看出createStore方法最终return了几个方法 通过闭包的原理 内部的各个变量也就被持久化的存储了 
- 
- 而通过暴露的getState,dispatch等函数 我们可以获取或者改变其内部的state。
+上述代码 可以看出createStore方法最终return了几个方法 通过闭包的原理 内部的各个变量也就被持久化的存储了 
+而通过暴露的getState,dispatch等函数 我们可以获取或者改变其内部的state。
 
- 
+
+getState 
+返回当前的状态树
+
+function getState() {
+   return currentState
+}
+
+
+subscribe 
+这个函数用于给store添加监听函数 把需要添加的监听函数作为参数传入即可
+nextListeners即为目前的监听函数列表 添加之后 subscribe方法会返回一个 unsubscribe()方法
+此方法用于注销添加的监听函数
+
+function subscribe(listener) {
+  if (typeof listener !== 'function') {
+    throw new Error('Expected listener to be a function.')
+  }
+
+  let isSubscribed = true
+
+  ensureCanMutateNextListeners()
+  nextListeners.push(listener)
+
+  return function unsubscribe() {
+    if (!isSubscribed) {
+      return
+    }
+
+    isSubscribed = false
+
+    ensureCanMutateNextListeners()
+    const index = nextListeners.indexOf(listener)
+    nextListeners.splice(index, 1)
+  }
+}
+
+dispatch
+它可能是我们用的最多的函数 它只是执行了当前的reducer方法 
+然后把当前的state和你在调用dispatch时传入的action作为参数返回的值就是新的currentState 
+从这里我们可以看出 改变state的代码逻辑就在reducer方法中
+在这执行后 dispatch方法会遍历当前的监听列表 并执行所有的监听函数
+
+function dispatch(action) {
+  //action必须是一个包含type的对象
+  if (!isPlainObject(action)) {
+    throw new Error(
+      'Actions must be plain objects. ' +
+      'Use custom middleware for async actions.'
+    )
+  }
+
+  if (typeof action.type === 'undefined') {
+    throw new Error(
+      'Actions may not have an undefined "type" property. ' +
+      'Have you misspelled a constant?'
+    )
+  }
+
+  //如果正处于isDispatching状态，报错
+  if (isDispatching) {
+    throw new Error('Reducers may not dispatch actions.')
+  }
+
+  try {
+    isDispatching = true
+    //这里就是调用我们reducer方法的地方，返回一个新的state作为currentState
+    currentState = currentReducer(currentState, action)
+  } finally {
+    isDispatching = false
+  }
+
+  //调用所有的监听函数
+  const listeners = currentListeners = nextListeners
+  for (let i = 0; i < listeners.length; i++) {
+    const listener = listeners[i]
+    listener()
+  }
+
+  return action
+}
+
+replaceReducer
+dispatch({type:ActionTypes.INIT}) 是替换reducer之后重新初始化状态树
+
+function replaceReducer(nextReducer) {
+  if (typeof nextReducer !== 'function') {
+    throw new Error('Expected the nextReducer to be a function.')
+  }
+
+  currentReducer = nextReducer
+  dispatch({ type: ActionTypes.INIT })
+}
+
+observable
+这个方法用于提供观察者模式的操作
+
+function observable() {
+  const outerSubscribe = subscribe
+  return {
+    subscribe(observer) {
+      if (typeof observer !== 'object') {
+        throw new TypeError('Expected the observer to be an object.')
+      }
+
+      function observeState() {
+        //观察者模式的链式结构，传入当前的state
+        if (observer.next) {
+          observer.next(getState())
+        }
+      }
+
+      observeState()
+      const unsubscribe = outerSubscribe(observeState)
+      return { unsubscribe }
+    },
+
+    [$$observable]() {
+      return this
+    }
+  }
+}
