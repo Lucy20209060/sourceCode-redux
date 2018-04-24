@@ -20,3 +20,7 @@ export default function compose(...funcs) {
 
   return funcs.reduce((a, b) => (...args) => a(b(...args)))
 }
+
+非常简洁的代码 最后一句 非常函数式的一句代码
+先看reduce方法
+reduce接受两个参数 第一个参数是一个callback函数 第二个是一个初始值 initValue
