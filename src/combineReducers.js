@@ -2,6 +2,7 @@ import ActionTypes from './utils/actionTypes'
 import warning from './utils/warning'
 import isPlainObject from './utils/isPlainObject'
 
+// 根据key和action生成错误信息
 function getUndefinedStateErrorMessage(key, action) {
   const actionType = action && action.type
   const actionDescription =
@@ -14,6 +15,7 @@ function getUndefinedStateErrorMessage(key, action) {
   )
 }
 
+// 一些警告级别的错误
 function getUnexpectedStateShapeWarningMessage(
   inputState,
   reducers,
@@ -61,10 +63,13 @@ function getUnexpectedStateShapeWarningMessage(
     )
   }
 }
-
+// 用于检测用于组合的reducer是否是符合redux规定的reducer
 function assertReducerShape(reducers) {
   Object.keys(reducers).forEach(key => {
     const reducer = reducers[key]
+    // 调用reducer方法 undefined为第一个参数
+    // 使用前说到过的 ActionTypes.INIT 和一个随机type生成 action 作为第二个参数
+    // 若返回的初始state为 undefined 则这是一个不符合规定的 reducer方法 抛出异常
     const initialState = reducer(undefined, { type: ActionTypes.INIT })
 
     if (typeof initialState === 'undefined') {
