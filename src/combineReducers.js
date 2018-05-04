@@ -168,12 +168,14 @@ export default function combineReducers(reducers) {
     }
 
     let hasChanged = false
-    const nextState = {}
+    const nextState = {}//下一个state树
+    //遍历所有reducers，然后将每个reducer返回的state组合起来生成一个大的状态树，所以任何action，redux都会遍历所有的reducer
     for (let i = 0; i < finalReducerKeys.length; i++) {
       const key = finalReducerKeys[i]
       const reducer = finalReducers[key]
       const previousStateForKey = state[key]
       const nextStateForKey = reducer(previousStateForKey, action)
+      //如果此reducer返回的新的state是undefined，抛出异常
       if (typeof nextStateForKey === 'undefined') {
         const errorMessage = getUndefinedStateErrorMessage(key, action)
         throw new Error(errorMessage)
@@ -181,6 +183,7 @@ export default function combineReducers(reducers) {
       nextState[key] = nextStateForKey
       hasChanged = hasChanged || nextStateForKey !== previousStateForKey
     }
+    //如果当前action对应的reducer方法执行完后，该处数据没有变化，则返回原来的流程树
     return hasChanged ? nextState : state
   }
 }
